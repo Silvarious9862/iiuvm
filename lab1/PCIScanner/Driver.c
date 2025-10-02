@@ -29,7 +29,7 @@ DRIVER_UNLOAD UnloadDriver;
 DRIVER_DISPATCH DispatchCreateClose;
 DRIVER_DISPATCH DispatchDeviceControl;
 
-// Функция для определения типа устройства по Class/Subclass
+// Определение типа устройства по Class/Subclass
 const char* GetDeviceType(UCHAR base_class, UCHAR sub_class) {
     UNREFERENCED_PARAMETER(base_class);
     UNREFERENCED_PARAMETER(sub_class);
@@ -93,7 +93,7 @@ const char* GetDeviceType(UCHAR base_class, UCHAR sub_class) {
     }
 }
 
-// Функция для определения вендора по VendorID
+// Определение вендора по VendorID
 const char* GetVendorName(USHORT vendor_id) {
     UNREFERENCED_PARAMETER(vendor_id);
 
@@ -147,12 +147,12 @@ NTSTATUS ScanPciDevices(PPCI_DEVICE_LIST deviceList) {
                     const char* vendor_name = GetVendorName(vendor_id);
                     const char* device_type = GetDeviceType(base_class, sub_class);
 
-                    // Используем RtlStringCbPrintfA безопасно
+                    // Копируем информацию
                     NTSTATUS status;
                     status = RtlStringCbPrintfA(devInfo->Description, sizeof(devInfo->Description),
                         "%s %s", vendor_name, device_type);
 
-                    // Если не удалось сформировать строку, используем запасной вариант
+                    // Запасной вариант копирования
                     if (!NT_SUCCESS(status)) {
                         RtlStringCbCopyA(devInfo->Description, sizeof(devInfo->Description), "Unknown Device");
                     }

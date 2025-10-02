@@ -12,7 +12,6 @@ public:
     PCI_Scanner_App() = default;
     ~PCI_Scanner_App();
 
-    // Запрещаем копирование
     PCI_Scanner_App(const PCI_Scanner_App&) = delete;
     PCI_Scanner_App& operator=(const PCI_Scanner_App&) = delete;
 

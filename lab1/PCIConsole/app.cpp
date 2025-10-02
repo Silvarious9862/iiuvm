@@ -51,23 +51,20 @@ void Application::SetupConsole() {
 void Application::ShowError(DWORD errorCode) {
     std::cerr << "Cannot access PCI scanner driver.\n";
     std::cerr << "Error code: " << errorCode << "\n\n";
-    std::cerr << "Please ensure:\n";
-    std::cerr << "1. Driver is installed: sc create PCIScanner binPath= \"C:\\path\\pci_scanner.sys\" type= kernel\n";
-    std::cerr << "2. Driver is running: sc start PCIScanner\n";
+    std::cerr << "Some help:\n";
+    std::cerr << "1. sc create PCIScanner binPath= \"C:\\path\\pci_scanner.sys\" type= kernel\n";
+    std::cerr << "2. sc start PCIScanner\n";
     std::cerr << "3. You have administrator privileges\n";
 }
 
 void Application::WaitForExit() {
     std::cout << "\nPress Enter to exit...";
 
-    // Простая и надежная реализация без сложных зависимостей
     char buffer[100];
     if (std::cin.getline(buffer, sizeof(buffer))) {
-        // Буфер очищен, просто ждем следующего ввода
     }
 
-    // Альтернативный способ - используем getchar()
-    std::cin.clear(); // Сбрасываем флаги ошибок
-    std::cin.ignore(10000, '\n'); // Игнорируем все в буфере
-    std::cin.get(); // Ждем нажатия Enter
+    std::cin.clear(); 
+    std::cin.ignore(10000, '\n'); 
+    std::cin.get(); 
 }

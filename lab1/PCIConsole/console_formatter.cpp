@@ -1,8 +1,8 @@
 #include "console_formatter.h"
 
 void Console_Formatter::PrintHeader() {
-    std::cout << "PCI Device Scanner - C++ Application\n";
-    std::cout << "=====================================\n\n";
+    std::cout << "PCI Device Scanner\n";
+    std::cout << "------------------\n\n";
 }
 
 void Console_Formatter::PrintDevices(const std::vector<PCI_DEVICE_INFO>& devices) {
@@ -14,7 +14,7 @@ void Console_Formatter::PrintDevices(const std::vector<PCI_DEVICE_INFO>& devices
     // Таблица с выравниванием
     constexpr int col_widths[] = { 8, 12, 8, 10, 40 };
 
-    PrintTableRow({ "Location", "Vendor:Device", "Class", "Revision", "Description" }, col_widths);
+    PrintTableRow({ "Addr", "Vendor:Device", "Class", "Rev", "Description" }, col_widths);
     PrintSeparator(80);
 
     for (const auto& device : devices) {
@@ -30,7 +30,7 @@ void Console_Formatter::PrintDevices(const std::vector<PCI_DEVICE_INFO>& devices
 
 void Console_Formatter::PrintStatistics(const std::vector<PCI_DEVICE_INFO>& devices) {
     std::cout << "\nScan Statistics:\n";
-    std::cout << "================\n";
+    std::cout << "----------------\n";
     std::cout << "Total devices: " << devices.size() << "\n\n";
 
     // Группировка по классам
