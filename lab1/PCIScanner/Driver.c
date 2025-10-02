@@ -1,4 +1,5 @@
 #include <wdm.h>
+#include <ntstrsafe.h>
 
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
@@ -21,20 +22,92 @@ typedef struct _PCI_DEVICE_INFO {
 
 typedef struct _PCI_DEVICE_LIST {
     ULONG NumberOfDevices;
-    PCI_DEVICE_INFO Devices[32]; // Максимум 32 устройства
+    PCI_DEVICE_INFO Devices[32];
 } PCI_DEVICE_LIST, * PPCI_DEVICE_LIST;
 
 DRIVER_UNLOAD UnloadDriver;
 DRIVER_DISPATCH DispatchCreateClose;
 DRIVER_DISPATCH DispatchDeviceControl;
 
-// Функции для работы с PCI остаются теми же...
+// Функция для определения типа устройства по Class/Subclass
 const char* GetDeviceType(UCHAR base_class, UCHAR sub_class) {
-    // ... (код из предыдущей версии)
+    UNREFERENCED_PARAMETER(base_class);
+    UNREFERENCED_PARAMETER(sub_class);
+
+    switch (base_class) {
+    case 0x00: return "Pre-2.0 Device";
+    case 0x01:
+        switch (sub_class) {
+        case 0x00: return "SCSI Controller";
+        case 0x01: return "IDE Controller";
+        case 0x02: return "Floppy Controller";
+        case 0x03: return "IPI Controller";
+        case 0x04: return "RAID Controller";
+        case 0x05: return "ATA Controller";
+        case 0x06: return "SATA Controller";
+        case 0x80: return "Other Mass Storage";
+        default: return "Mass Storage Controller";
+        }
+    case 0x02:
+        switch (sub_class) {
+        case 0x00: return "Ethernet Controller";
+        case 0x01: return "Token Ring Controller";
+        case 0x02: return "FDDI Controller";
+        case 0x03: return "ATM Controller";
+        case 0x04: return "ISDN Controller";
+        case 0x80: return "Other Network Controller";
+        default: return "Network Controller";
+        }
+    case 0x03:
+        switch (sub_class) {
+        case 0x00: return "VGA Compatible Controller";
+        case 0x01: return "XGA Controller";
+        case 0x02: return "3D Controller";
+        case 0x80: return "Other Display Controller";
+        default: return "Display Controller";
+        }
+    case 0x06:
+        switch (sub_class) {
+        case 0x00: return "Host Bridge";
+        case 0x01: return "ISA Bridge";
+        case 0x02: return "EISA Bridge";
+        case 0x03: return "MCA Bridge";
+        case 0x04: return "PCI-to-PCI Bridge";
+        case 0x05: return "PCMCIA Bridge";
+        case 0x06: return "NuBus Bridge";
+        case 0x07: return "CardBus Bridge";
+        case 0x08: return "RACEway Bridge";
+        case 0x80: return "Other Bridge";
+        default: return "Bridge Device";
+        }
+    case 0x0C:
+        switch (sub_class) {
+        case 0x00: return "Serial Controller";
+        case 0x01: return "Parallel Controller";
+        case 0x02: return "Multiport Serial Controller";
+        case 0x03: return "Modem";
+        case 0x80: return "Other Communications";
+        default: return "Communications Controller";
+        }
+    default: return "Unknown Device";
+    }
 }
 
+// Функция для определения вендора по VendorID
 const char* GetVendorName(USHORT vendor_id) {
-    // ... (код из предыдущей версии)
+    UNREFERENCED_PARAMETER(vendor_id);
+
+    switch (vendor_id) {
+    case 0x8086: return "Intel";
+    case 0x10DE: return "NVIDIA";
+    case 0x1002: return "AMD";
+    case 0x1414: return "Microsoft";
+    case 0x5333: return "S3";
+    case 0x1011: return "Digital Equipment";
+    case 0x10EC: return "Realtek";
+    case 0x1969: return "Atheros";
+    default: return "Unknown Vendor";
+    }
 }
 
 NTSTATUS ScanPciDevices(PPCI_DEVICE_LIST deviceList) {
@@ -73,8 +146,16 @@ NTSTATUS ScanPciDevices(PPCI_DEVICE_LIST deviceList) {
                     // Формируем описание
                     const char* vendor_name = GetVendorName(vendor_id);
                     const char* device_type = GetDeviceType(base_class, sub_class);
-                    RtlStringCbPrintfA(devInfo->Description, sizeof(devInfo->Description),
+
+                    // Используем RtlStringCbPrintfA безопасно
+                    NTSTATUS status;
+                    status = RtlStringCbPrintfA(devInfo->Description, sizeof(devInfo->Description),
                         "%s %s", vendor_name, device_type);
+
+                    // Если не удалось сформировать строку, используем запасной вариант
+                    if (!NT_SUCCESS(status)) {
+                        RtlStringCbCopyA(devInfo->Description, sizeof(devInfo->Description), "Unknown Device");
+                    }
 
                     devices_found++;
 
