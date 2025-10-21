@@ -33,7 +33,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Helper to build filename timestamp (unused here but left for compatibility)
 static std::wstring MakeTimestampFilename(const std::wstring& ext, const std::wstring& outputDir) {
     SYSTEMTIME st;
     GetLocalTime(&st);
@@ -82,12 +81,10 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     hr = act->ActivateObject(IID_PPV_ARGS(&spSource));
     if (FAILED(hr)) { Logger::Instance().Error(L"ActivateObject failed: " + std::to_wstring((long)hr)); return hr; }
 
-    // We want a SourceReader with default attributes.
     ComPtr<IMFSourceReader> spReader;
     hr = MFCreateSourceReaderFromMediaSource(spSource.Get(), nullptr, &spReader);
     if (FAILED(hr)) { Logger::Instance().Error(L"MFCreateSourceReaderFromMediaSource failed: " + std::to_wstring((long)hr)); return hr; }
 
-    // Prefer RGB32 (one-plane BGRX), fall back to RGB24, then NV12
     ComPtr<IMFMediaType> pTypeOut;
     hr = MFCreateMediaType(&pTypeOut);
     if (FAILED(hr)) { Logger::Instance().Error(L"MFCreateMediaType failed: " + std::to_wstring((long)hr)); return hr; }
@@ -98,7 +95,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     bool chosenRGB24 = false;
     bool chosenNV12 = false;
 
-    // Try RGB32
     hr = pTypeOut->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
     if (SUCCEEDED(hr)) {
         hr = spReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pTypeOut.Get());
@@ -112,7 +108,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     }
 
     if (!chosenRGB32) {
-        // Try RGB24
         hr = pTypeOut->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24);
         if (SUCCEEDED(hr)) {
             hr = spReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pTypeOut.Get());
@@ -127,7 +122,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     }
 
     if (!chosenRGB32 && !chosenRGB24) {
-        // Try NV12 as last resort
         hr = pTypeOut->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_NV12);
         if (SUCCEEDED(hr)) {
             hr = spReader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pTypeOut.Get());
@@ -155,14 +149,12 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     if (usedFmt) *usedFmt = vf;
     Logger::Instance().Verbose(L"Selected format: " + std::to_wstring(vf.width) + L"x" + std::to_wstring(vf.height));
 
-    // Ensure video stream selected
     hr = spReader->SetStreamSelection(MF_SOURCE_READER_FIRST_VIDEO_STREAM, TRUE);
     if (FAILED(hr)) {
         Logger::Instance().Error(L"SetStreamSelection failed: " + std::to_wstring((long)hr));
         return hr;
     }
 
-    // Read sample loop: some cameras need warm-up
     const DWORD kTimeoutMs = 5000;
     const DWORD kPollIntervalMs = 30;
     DWORD waited = 0;
@@ -206,12 +198,10 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
         return E_FAIL;
     }
 
-    // Create WIC imaging factory
     ComPtr<IWICImagingFactory> spWIC;
     hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&spWIC));
     if (FAILED(hr)) { Logger::Instance().Error(L"WIC CreateInstance failed: " + std::to_wstring((long)hr)); return hr; }
 
-    // Determine pixel format and stride
     GUID finalSub = { 0 };
     pFinalType->GetGUID(MF_MT_SUBTYPE, &finalSub);
     bool useRgb32 = (finalSub == MFVideoFormat_RGB32);
@@ -224,14 +214,11 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
 
     Logger::Instance().Verbose(L"Frame buffer info: curLen=" + std::to_wstring(curLen));
 
-    // Only use the first frame worth of bytes
     UINT useBytes = (curLen >= expectedBytes) ? expectedBytes : curLen;
 
-    // Select WIC pixel format
     WICPixelFormatGUID pixfmt = useRgb32 ? GUID_WICPixelFormat32bppBGR : GUID_WICPixelFormat24bppBGR;
 
-    // NV12 software conversion to BGR24 if needed
-    std::shared_ptr<std::vector<BYTE>> convPtr; // to hold converted buffer lifetime
+    std::shared_ptr<std::vector<BYTE>> convPtr; 
     if (useNv12) {
         Logger::Instance().Verbose(L"NV12 frame captured; converting to BGR24");
 
@@ -297,7 +284,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
         Logger::Instance().Verbose(L"Conversion done");
     }
 
-    // Try to create bitmap from memory for RGB24/RGB32 using useBytes and expectedStride
     ComPtr<IWICBitmap> spBitmap;
     bool createdFromMemory = false;
     if (!useNv12) {
@@ -312,7 +298,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     }
 
     if (!createdFromMemory) {
-        // Fallback: create empty bitmap and copy only useBytes
         hr = spWIC->CreateBitmap(vf.width, vf.height, pixfmt, WICBitmapCacheOnLoad, &spBitmap);
         if (FAILED(hr)) {
             Logger::Instance().Error(L"Fallback CreateBitmap failed");
@@ -344,7 +329,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
         }
     }
 
-    // create stream and encoder
     ComPtr<IWICStream> spStream;
     hr = spWIC->CreateStream(&spStream);
     if (FAILED(hr)) { Logger::Instance().Error(L"CreateStream failed"); return hr; }
@@ -369,11 +353,10 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     hr = spFrame->SetSize(vf.width, vf.height);
     if (FAILED(hr)) { Logger::Instance().Error(L"SetSize failed"); return hr; }
 
-    WICPixelFormatGUID targetFmt = pixfmt; // prefer to write same format
+    WICPixelFormatGUID targetFmt = pixfmt;
     hr = spFrame->SetPixelFormat(&targetFmt);
     if (FAILED(hr)) { Logger::Instance().Error(L"SetPixelFormat failed"); return hr; }
 
-    // If WIC requires different targetFmt, perform conversion
     bool needConversion = (targetFmt != pixfmt);
     ComPtr<IWICBitmap> spBitmapToWrite = spBitmap;
     if (needConversion) {
@@ -389,7 +372,6 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
         spBitmapToWrite = spConvBitmap;
     }
 
-    // Write frame
     hr = spFrame->WriteSource(spBitmapToWrite.Get(), nullptr);
     if (FAILED(hr)) {
         Logger::Instance().Verbose(L"WriteSource failed, trying WritePixels fallback");
@@ -414,14 +396,12 @@ HRESULT FrameGrabber::CaptureToJpeg(const std::wstring& outPath, UINT quality, s
     hr = spEncoder->Commit();
     if (FAILED(hr)) { Logger::Instance().Error(L"Encoder Commit failed"); return hr; }
 
-    // Release resources to flush underlying stream
     spFrame.Reset();
     spEncoder.Reset();
     spStream.Reset();
     spBitmap.Reset();
     spBitmapToWrite.Reset();
 
-    // Diagnostic: check file exists
     WIN32_FILE_ATTRIBUTE_DATA fad;
     if (GetFileAttributesExW(outPath.c_str(), GetFileExInfoStandard, &fad)) {
         Logger::Instance().Verbose(L"Saved image: " + outPath);

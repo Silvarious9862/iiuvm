@@ -30,7 +30,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Human-readable GUID to string helper
 std::wstring GuidToString(const GUID& g) {
     wchar_t buf[64] = {};
     if (0 == StringFromGUID2(g, buf, (int)std::size(buf))) {
@@ -39,7 +38,6 @@ std::wstring GuidToString(const GUID& g) {
     return std::wstring(buf);
 }
 
-// Helper to extract UINT64 attr representing frame size or rate
 static bool GetAttributeUINT64(IMFAttributes* attr, const GUID& key, UINT64& out) {
     if (!attr) return false;
     PROPVARIANT var;
@@ -53,7 +51,6 @@ static bool GetAttributeUINT64(IMFAttributes* attr, const GUID& key, UINT64& out
     return true;
 }
 
-// Convert MF media type -> VideoFormatInfo
 void ParseMediaType(IMFMediaType* pType, VideoFormatInfo& out) {
     if (!pType) return;
     UINT32 width = 0, height = 0;
@@ -80,27 +77,21 @@ void ParseMediaType(IMFMediaType* pType, VideoFormatInfo& out) {
         out.subtype = GUID_NULL;
     }
 
-    // битовая глубина: если MF_MT_BITS_PER_SAMPLE определён в текущем SDK, используем его,
-    // иначе пробуем получить MF_MT_ALL_SAMPLES_INDEPENDENT или пропускаем.
 #ifdef MF_MT_BITS_PER_SAMPLE
     UINT32 bitDepth = 0;
     if (SUCCEEDED(pType->GetUINT32(MF_MT_BITS_PER_SAMPLE, &bitDepth))) out.bitDepth = bitDepth;
     else out.bitDepth = 0;
 #else
-    // SDK не содержит MF_MT_BITS_PER_SAMPLE — пробуем MF_MT_ALL_SAMPLES_INDEPENDENT как индикатор,
-    // но точное значение битовой глубины может быть недоступно — устанавливаем 0
     out.bitDepth = 0;
 #endif
 }
 
-// Enumerate video capture devices and their formats
 static std::vector<DeviceInfo> EnumerateDevicesInternal() {
     std::vector<DeviceInfo> list;
 
     ComPtr<IMFAttributes> spAttr;
     if (FAILED(MFCreateAttributes(&spAttr, 2))) return list;
 
-    // запрос устройств видеозахвата
     if (FAILED(spAttr->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID))) return list;
 
     IMFActivate** ppDevices = nullptr;
@@ -115,21 +106,18 @@ static std::vector<DeviceInfo> EnumerateDevicesInternal() {
         IMFActivate* act = ppDevices[i];
         DeviceInfo di;
 
-        // Friendly name
         WCHAR* friendlyName = nullptr;
         if (SUCCEEDED(act->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &friendlyName, nullptr))) {
             di.name = friendlyName;
             CoTaskMemFree(friendlyName);
         }
 
-        // Symbolic link (id)
         WCHAR* symId = nullptr;
         if (SUCCEEDED(act->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &symId, nullptr))) {
             di.id = symId;
             CoTaskMemFree(symId);
         }
 
-        // vendor/manufacturer — этот атрибут может отсутствовать в некоторых SDK
 #ifdef MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_HW_VENDOR_GUID
         WCHAR* vendor = nullptr;
         if (SUCCEEDED(act->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_HW_VENDOR_GUID, &vendor, nullptr))) {
@@ -137,11 +125,9 @@ static std::vector<DeviceInfo> EnumerateDevicesInternal() {
             CoTaskMemFree(vendor);
         }
 #else
-        // если атрибута нет в SDK, оставляем vendor пустым
         (void)0;
 #endif
 
-        // activate source to enumerate native formats
         ComPtr<IMFMediaSource> spSource;
         if (SUCCEEDED(act->ActivateObject(IID_PPV_ARGS(&spSource)))) {
             ComPtr<IMFSourceReader> spReader;

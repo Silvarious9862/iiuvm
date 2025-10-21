@@ -39,7 +39,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
     hr = act->ActivateObject(IID_PPV_ARGS(&spSource));
     if (FAILED(hr)) { Logger::Instance().Error(L"ActivateObject failed: " + std::to_wstring((long)hr)); act->Release(); CoTaskMemFree(ppDevices); return hr; }
 
-    // Create SourceReader with attributes (allow video processing)
     ComPtr<IMFAttributes> readerAttr;
     hr = MFCreateAttributes(&readerAttr, 1);
     if (FAILED(hr)) { Logger::Instance().Error(L"MFCreateAttributes(reader) failed: " + std::to_wstring((long)hr)); spSource->Shutdown(); spSource.Reset(); act->Release(); CoTaskMemFree(ppDevices); return hr; }
@@ -49,7 +48,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
     hr = MFCreateSourceReaderFromMediaSource(spSource.Get(), readerAttr.Get(), &reader);
     if (FAILED(hr)) { Logger::Instance().Error(L"MFCreateSourceReaderFromMediaSource failed: " + std::to_wstring((long)hr)); spSource->Shutdown(); spSource.Reset(); act->Release(); CoTaskMemFree(ppDevices); return hr; }
 
-    // Query native/current media type and select an input format for sink writer
     ComPtr<IMFMediaType> pNativeType;
     hr = reader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pNativeType);
     if (FAILED(hr) || !pNativeType) {
@@ -67,7 +65,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
     MFGetAttributeRatio(pNativeType.Get(), MF_MT_FRAME_RATE, &num, &den);
     if (num == 0) { num = 30; den = 1; }
 
-    // Preferred input for H264 encoder is NV12. Try to set reader to NV12; fallback to RGB32.
     GUID preferredSub = MFVideoFormat_NV12;
     ComPtr<IMFMediaType> pTryType;
     hr = MFCreateMediaType(&pTryType);
@@ -76,14 +73,12 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         pTryType->SetGUID(MF_MT_SUBTYPE, preferredSub);
         MFSetAttributeSize(pTryType.Get(), MF_MT_FRAME_SIZE, width, height);
         MFSetAttributeRatio(pTryType.Get(), MF_MT_FRAME_RATE, num, den);
-        // try to set reader to NV12
         hr = reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pTryType.Get());
     }
     bool usingNV12 = SUCCEEDED(hr);
 
     if (!usingNV12) {
         Logger::Instance().Verbose(L"NV12 not available, trying RGB32");
-        // try RGB32
         hr = MFCreateMediaType(&pTryType);
         if (SUCCEEDED(hr)) {
             pTryType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
@@ -99,18 +94,14 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         }
     }
 
-    // Create sink writer
     ComPtr<IMFSinkWriter> sinkWriter;
-    // ensure sink writer target has .mp4 extension so MF picks MP4 muxer/encoder
     std::wstring tmpForSink = tmpPath;
     WCHAR ext[_MAX_EXT]{};
     _wsplitpath_s(tmpPath.c_str(), nullptr, 0, nullptr, 0, nullptr, 0, ext, _MAX_EXT);
     if (_wcsicmp(ext, L".mp4") != 0) {
-        // append .mp4 to temporary filename used by SinkWriter
         tmpForSink = tmpPath + L".mp4";
     }
 
-    // create sink writer to tmpForSink
     hr = MFCreateSinkWriterFromURL(tmpForSink.c_str(), nullptr, nullptr, &sinkWriter);
 
     if (FAILED(hr)) {
@@ -119,7 +110,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         return hr;
     }
 
-    // Prepare output media type (H.264) using same resolution/framerate
     ComPtr<IMFMediaType> pOutMediaType;
     hr = MFCreateMediaType(&pOutMediaType);
     if (FAILED(hr)) { Logger::Instance().Error(L"MFCreateMediaType(out) failed: " + std::to_wstring((long)hr)); return hr; }
@@ -127,7 +117,7 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
     pOutMediaType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
     MFSetAttributeSize(pOutMediaType.Get(), MF_MT_FRAME_SIZE, width, height);
     MFSetAttributeRatio(pOutMediaType.Get(), MF_MT_FRAME_RATE, num, den);
-    pOutMediaType->SetUINT32(MF_MT_AVG_BITRATE, 4000000); // 4 Mbps
+    pOutMediaType->SetUINT32(MF_MT_AVG_BITRATE, 4000000); 
     pOutMediaType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
 
     DWORD outStreamIndex = 0;
@@ -138,7 +128,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         return hr;
     }
 
-    // Configure input media type for sink writer — must match what reader now outputs
     ComPtr<IMFMediaType> pReaderType;
     hr = reader->GetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pReaderType);
     if (FAILED(hr) || !pReaderType) {
@@ -147,7 +136,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         return hr;
     }
 
-    // Use pReaderType as input type for sink writer (the sink writer will insert required MFTs)
     hr = sinkWriter->SetInputMediaType(outStreamIndex, pReaderType.Get(), nullptr);
     if (FAILED(hr)) {
         Logger::Instance().Error(L"SetInputMediaType failed: " + std::to_wstring((long)hr));
@@ -162,7 +150,6 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
         return hr;
     }
 
-    // Recording loop: read samples and write to sinkWriter
     auto start = std::chrono::steady_clock::now();
     while (true) {
         ComPtr<IMFSample> pSample;
@@ -192,14 +179,12 @@ HRESULT VideoRecorder::RecordToFile(const std::wstring& tmpPath, const std::wstr
     hr = sinkWriter->Finalize();
     if (FAILED(hr)) Logger::Instance().Error(L"Finalize failed: " + std::to_wstring((long)hr));
 
-    // tidy up
     reader.Reset();
     spSource->Shutdown();
     spSource.Reset();
     act->Release();
     CoTaskMemFree(ppDevices);
 
-    // Move tmp -> final
     if (!MoveFileExW(tmpPath.c_str(), finalPath.c_str(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
         CopyFileW(tmpPath.c_str(), finalPath.c_str(), FALSE);
         DeleteFileW(tmpPath.c_str());

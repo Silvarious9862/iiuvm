@@ -80,7 +80,7 @@ void Logger::Verbose(const std::wstring& msg) {
     if (!pImpl) return;
     std::lock_guard<std::mutex> g(pImpl->mtx);
     if (!pImpl->console) return;
-    if (!pImpl->verbose) return; // only print in verbose mode
+    if (!pImpl->verbose) return; 
     std::wstring line = TimestampNow() + L" [VERBOSE] " + msg + L"\n";
     SafeWriteConsoleWide(GetStdHandle(STD_OUTPUT_HANDLE), line);
 }

@@ -102,7 +102,7 @@ static bool EnsureConsole() {
 
 static void PauseIfConsoleAllocated(bool allocated) {
     if (!allocated) return;
-    std::wcout << L"\nPress Enter to exit...";
+    Logger::Instance().Info(L"\nНажмите Enter для выхода...");
     std::wcout.flush();
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
     if (hStdin && hStdin != INVALID_HANDLE_VALUE) {
@@ -130,7 +130,6 @@ int wmain(int argc, wchar_t** argv) {
 
     auto exePath = GetExePath();
 
-    // Инициализируем простой консольный логгер — по умолчанию минимальный (verbose=false)
     Logger::Instance().InitConsole(wantConsole, opt->verbose);
     Logger::Instance().Info(L"Программа запущена");
 

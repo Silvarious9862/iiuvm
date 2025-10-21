@@ -34,9 +34,6 @@ std::optional<CmdOptions> CommandLineParser::Parse(int argc, wchar_t** argv, std
         else if (a == L"--quiet") {
             opt.quiet = true;
         }
-        else if (a == L"--verbose") {
-            // reserved, but parsing here allows future use without error
-        }
         else {
             err = L"Неподдерживаемый аргумент: " + std::wstring(argv[i]);
             return std::nullopt;
