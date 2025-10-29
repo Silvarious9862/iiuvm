@@ -15,48 +15,48 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="Logger.cpp">
+    <ClCompile Include="src\CommandLine.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="CommandLine.cpp">
+    <ClCompile Include="src\Logger.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="MFHelpers.cpp">
+    <ClCompile Include="src\MFHelpers.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="DeviceEnumerator.cpp">
+    <ClCompile Include="src\DeviceEnumerator.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="FrameGrabber.cpp">
+    <ClCompile Include="src\FrameGrabber.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="VideoRecorder.cpp">
+    <ClCompile Include="src\VideoRecorder.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ScopeGuard.h">
+    <ClInclude Include="src\CommandLine.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="Logger.h">
+    <ClInclude Include="src\Logger.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="CommandLine.h">
+    <ClInclude Include="src\MFHelpers.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="MFHelpers.h">
+    <ClInclude Include="src\DeviceEnumerator.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="DeviceEnumerator.h">
+    <ClInclude Include="src\FrameGrabber.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="FrameGrabber.h">
+    <ClInclude Include="src\VideoRecorder.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="VideoRecorder.h">
+    <ClInclude Include="include\ScopeGuard.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
